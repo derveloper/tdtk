@@ -1,0 +1,17 @@
+[package]
+name = "tdtk"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+inquire = "0"
+derive_more = "0"
+rand = { version = "0" }
+rand_chacha = { version = "0" }
+base64 = "0"
+regex = "1"
+ansible-vault = "0"
+serde = "1.0"
+serde_yaml = "0"
