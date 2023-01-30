@@ -11,7 +11,7 @@ use rand_chacha::ChaCha20Rng;
 use rand_chacha::rand_core::{RngCore, SeedableRng};
 use regex::Regex;
 use crate::completer::FilePathCompleter;
-use crate::core::{Choice, prompt};
+use crate::core::{Choice, select};
 use crate::core::Action::{Generate, Import};
 
 pub fn handle_vault_secret() {
@@ -30,7 +30,7 @@ pub fn handle_vault_secret() {
         println!("The vault password must be at least 12 characters long");
         handle_vault_secret();
     } else {
-        match prompt("Do you want to generate a new secret?", vec![
+        match select("Do you want to generate a new secret?", vec![
             Choice { choice: Generate, prompt: "Generate a new secret" },
             Choice { choice: Import, prompt: "Import a secret" },
         ]) {
@@ -78,7 +78,6 @@ fn add_vault_secret(vault_password: String, secret_name: String, secret: Option<
     if !path.exists() {
         io::stdout().flush().unwrap();
         create_vault_file(vault_file_path.as_str(), vault_password.clone());
-        println!("done.");
     }
 
     if !path.is_file() {
@@ -141,6 +140,7 @@ fn decrypt_vault_file(file: &str, password: String) -> BTreeMap<String, String> 
 fn create_vault_file(file: &str, password: String) {
     File::create(file).expect("Failed to create vault file");
     execute_command(format!("ansible-vault encrypt {file} --vault-password-file <(cat <<<'{password}')"), Some(password));
+    println!("Created vault file at {}", file);
 }
 
 fn get_vault_password() -> String {

@@ -21,6 +21,6 @@ pub enum Chores {
     Service,
 }
 
-pub fn prompt<T>(prompt: &str, choices: Vec<Choice<T>>) -> InquireResult<Choice<T>> where T: std::fmt::Display {
+pub fn select<T>(prompt: &str, choices: Vec<Choice<T>>) -> InquireResult<Choice<T>> where T: std::fmt::Display {
     Select::new(prompt, choices).prompt()
 }
