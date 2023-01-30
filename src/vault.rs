@@ -1,17 +1,18 @@
-use std::collections::BTreeMap;
-use std::path::Path;
 use std::{fs, io, str};
+use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Write;
-use std::process::Command;
+use std::path::Path;
+
 use ansible_vault::decrypt_vault_from_file;
 use base64::Engine;
 use inquire::{Password, PasswordDisplayMode, Text};
 use rand_chacha::ChaCha20Rng;
 use rand_chacha::rand_core::{RngCore, SeedableRng};
 use regex::Regex;
+
 use crate::completer::FilePathCompleter;
-use crate::core::{Choice, select};
+use crate::core::{Choice, execute_command, select};
 use crate::core::Action::{Generate, Import};
 
 pub fn handle_vault_secret() {
@@ -147,29 +148,4 @@ fn get_vault_password() -> String {
     let vault_password_file = std::env::var("ANSIBLE_VAULT_PASSWORD_FILE")
         .expect("ANSIBLE_VAULT_PASSWORD_FILE is not set");
     execute_command(vault_password_file, None).trim().to_string()
-}
-
-fn execute_command(vault_command: String, password: Option<String>) -> String {
-    let output = Command::new("sh")
-        .arg("-c")
-        .arg(vault_command.clone())
-        .output()
-        .expect("failed to execute process");
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let stderr = match password.clone() {
-            Some(password) => stderr.replace(password.as_str(), "*****"),
-            None => stderr.to_string(),
-        };
-
-        let vault_command = match password {
-            Some(password) => vault_command.replace(password.as_str(), "*****"),
-            None => vault_command,
-        };
-
-        panic!("Failed to execute command: {}\n{}", vault_command, stderr);
-    }
-
-    String::from_utf8_lossy(&output.stdout).to_string()
 }

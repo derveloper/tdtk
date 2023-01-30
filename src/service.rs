@@ -1,10 +1,10 @@
 use std::fs;
 use std::path::Path;
 
-use git2::{Repository};
 use handlebars::Handlebars;
 use inquire::Text;
 use serde_json::json;
+use crate::core::execute_command;
 use crate::resources::TPL_README;
 
 pub fn handle_service() {
@@ -29,7 +29,6 @@ pub fn handle_service() {
         .expect("Failed to get service description");
 
     fs::create_dir(service_name.clone()).expect("Failed to create service directory");
-    let repo = Repository::init(service_name.clone()).expect("Failed to initialize git repository");
 
     let reg = Handlebars::new();
     reg.render_template_to_write(
@@ -42,22 +41,9 @@ pub fn handle_service() {
             .expect("Failed to create README.md"),
     ).expect("Failed to render README.md");
 
-    let mut index = repo.index()
-        .expect("Failed to get git index");
-    index
-        .add_all(&["*"], git2::IndexAddOption::DEFAULT, None)
-        .expect("Failed to add files to git index");
-
-    let oid = index.write_tree().expect("Failed to write git tree");
-    let tree = repo.find_tree(oid).expect("Failed to find git tree");
-    let signature = &repo.signature().expect("Failed to get git signature");
-
-    repo.commit(
-        Some("HEAD"),
-        signature,
-        signature,
-        "Initial commit",
-        &tree,
-        &[],
-    ).expect("Failed to commit files to git repository");
+    execute_command(
+        format!("cd {service_name} && \
+        git init && \
+        git add . && \
+        git commit -am 'Initial commit'").to_string(), None);
 }
