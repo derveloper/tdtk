@@ -138,15 +138,17 @@ fn add_vault_secret_to_file(secret_name: String, secret: String, vault_file_path
 }
 
 fn decrypt_vault_file(file: &str, password: String) -> BTreeMap<String, String> {
-    let decrypted = decrypt_vault_from_file(file, password.as_str()).expect("Failed to decrypt vault file");
+    let decrypted = decrypt_vault_from_file(file, password.as_str())
+        .expect("Failed to decrypt vault file");
     serde_yaml::from_str(str::from_utf8(&decrypted).expect("UTF-8 content expected"))
         .expect("Failed to parse decrypted vault file")
 }
 
-fn create_vault_file(file: &str, password: String) {
-    File::create(file).expect("Failed to create vault file");
-    execute_command(format!("ansible-vault encrypt {file} --vault-password-file <(cat <<<'{password}')"), Some(password));
-    println!("Created vault file at {}", file);
+fn create_vault_file(file_path: &str, password: String) {
+    let mut file = File::create(file_path).expect("Failed to create vault file");
+    let vault = ansible_vault::encrypt_vault("---".as_bytes(), password.as_str())
+        .expect("Failed to encrypt vault");
+    file.write(vault.as_bytes()).expect("Failed to write vault file");
 }
 
 fn get_vault_password() -> String {
