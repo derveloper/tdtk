@@ -27,11 +27,7 @@ pub fn handle_vault_secret() {
         get_vault_password()
     };
 
-    #[cfg(debug_assertions)]
     let min_length = 4;
-    #[cfg(not(debug_assertions))]
-    let min_length = 12;
-
     if vault_password.len() < min_length {
         println!("The vault password must be at least {min_length} characters long");
         handle_vault_secret();
