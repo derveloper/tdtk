@@ -27,8 +27,13 @@ pub fn handle_vault_secret() {
         get_vault_password()
     };
 
-    if vault_password.len() < 4 {
-        println!("The vault password must be at least 12 characters long");
+    #[cfg(debug_assertions)]
+    let min_length = 4;
+    #[cfg(not(debug_assertions))]
+    let min_length = 12;
+
+    if vault_password.len() < min_length {
+        println!("The vault password must be at least {min_length} characters long");
         handle_vault_secret();
     } else {
         match select("Do you want to generate a new secret?", vec![
