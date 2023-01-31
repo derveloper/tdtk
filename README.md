@@ -15,3 +15,4 @@ Just run `tdtk`, it asks you to select a tool.
 ## Tools
 
 * Secret handling for ansible vaults
+* WIP: Service repo creation
