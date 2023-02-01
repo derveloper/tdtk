@@ -1,1 +1,0 @@
-pub const TPL_README: &'static str = include_str!("resources/README.md.hb");

@@ -16,4 +16,12 @@ ansible-vault = "0"
 serde = "1.0"
 serde_yaml = "0"
 serde_json = "1"
-handlebars = "4.3.6"
+oauth2 = "4"
+url = "2"
+open = "3"
+octocrab = "0"
+tokio = { version = "1", features = ["full"] }
+clap = { version = "4", features = ["derive", "cargo", "string"] }
+clap-serde-derive = "0.2.0"
+toml = "0.7.1"
+dirs = "4.0.0"
