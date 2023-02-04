@@ -1,11 +1,11 @@
 use std::fs;
 use std::path::Path;
 
+use crate::core::execute_command;
+use crate::github::get_github_token;
 use inquire::{Select, Text};
 use oauth2::TokenResponse;
 use octocrab::models::User;
-use crate::core::execute_command;
-use crate::github::{get_github_token};
 
 pub async fn handle_service(repo_template: String) {
     let service_name = Text::new("(Alpha) What is the name of the service?")
@@ -20,8 +20,12 @@ pub async fn handle_service(repo_template: String) {
     }
 
     if Path::new(service_name.clone().as_str()).exists() {
-        let ans = Select::new("Directory exists, do you want to delete it?", vec!["No", "Yes"])
-            .prompt().expect("Failed to get input");
+        let ans = Select::new(
+            "Directory exists, do you want to delete it?",
+            vec!["No", "Yes"],
+        )
+            .prompt()
+            .expect("Failed to get input");
         if ans == "No" {
             print!("Nothing to do, exiting");
             return;
@@ -44,10 +48,14 @@ pub async fn handle_service(repo_template: String) {
     let user = octocrab.current().user().await.expect("Failed to get user");
     let (repo_owner, repo_name) = split_repo_name(service_name, user.clone());
 
-    let repo = octocrab.repos(repo_owner.clone(), repo_name.clone()).get().await;
+    let repo = octocrab
+        .repos(repo_owner.clone(), repo_name.clone())
+        .get()
+        .await;
     if repo.is_ok() {
         let ans = Select::new("Repo exists, do you want to delete it?", vec!["No", "Yes"])
-            .prompt().expect("Failed to get input");
+            .prompt()
+            .expect("Failed to get input");
         if ans == "No" {
             print!("Nothing to do, exiting");
             return;
@@ -62,7 +70,8 @@ pub async fn handle_service(repo_template: String) {
 
     let (template_owner, template_name) = split_repo_name(repo_template, user);
 
-    octocrab.repos(template_owner, template_name)
+    octocrab
+        .repos(template_owner, template_name)
         .generate(repo_name.as_str())
         .owner(repo_owner.as_str())
         .description(service_description.as_str())
@@ -72,7 +81,9 @@ pub async fn handle_service(repo_template: String) {
         .expect("Failed to create repo");
 
     execute_command(
-        format!("git clone git@github.com:{repo_owner}/{repo_name}").to_string(), None);
+        format!("git clone git@github.com:{repo_owner}/{repo_name}").to_string(),
+        None,
+    );
 }
 
 fn split_repo_name(service_name: String, user: User) -> (String, String) {

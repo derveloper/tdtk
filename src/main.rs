@@ -42,15 +42,15 @@ async fn main() {
     match matches.get_one::<String>("template_repo") {
         Some(template_repo) => {
             match select("What do you need to do?", vec![
-                Choice {choice: VaultSecret, prompt: "Create a ansible vault secret (password, token, key, ...)"},
-                Choice {choice: Service, prompt: "Create a new service"},
+                Choice { choice: VaultSecret, prompt: "Create a ansible vault secret (password, token, key, ...)" },
+                Choice { choice: Service, prompt: "Create a new service" },
             ]) {
                 Ok(choice) => {
                     match choice.choice {
                         VaultSecret => handle_vault_secret(),
                         Service => handle_service(template_repo.to_string()).await,
                     }
-                },
+                }
                 Err(_) => println!("There was an error, please try again"),
             };
         }

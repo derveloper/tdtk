@@ -6,7 +6,8 @@ This is a collection of tools I use daily, all in a handy interactive cli tool.
 
 ### Install
 
-To install, download the latest release from the [releases page](https://github.com/derveloper/tdtk/releases) and extract it to a directory in your path.
+To install, download the latest release from the [releases page](https://github.com/derveloper/tdtk/releases) and
+extract it to a directory in your path.
 
 ### Usage
 
