@@ -11,7 +11,7 @@ anyhow = "1.0.69"
 base64 = "0.21.0"
 clap = { version = "4.1.4", features = ["derive", "cargo", "string"] }
 clap-serde-derive = "0.2.0"
-derive_more = "0.99.17"
+derive_more = { version = "0.99.17", features = ["display"] }
 dirs = "4.0.0"
 inquire = "0.5.3"
 oauth2 = "4.3.0"
