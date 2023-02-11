@@ -7,12 +7,12 @@ edition = "2021"
 
 [dependencies]
 ansible-vault = "0"
-anyhow = "1.0"
+anyhow = "1"
 base64 = "0"
 clap = { version = "4", features = ["derive", "cargo", "string"] }
-clap-serde-derive = "0.2.0"
+clap-serde-derive = "0"
 derive_more = "0"
-dirs = "4.0.0"
+dirs = "4"
 inquire = "0"
 oauth2 = "4"
 octocrab = "0"
@@ -20,9 +20,9 @@ open = "3"
 rand = { version = "0" }
 rand_chacha = { version = "0" }
 regex = "1"
-serde = "1.0"
+serde = "1"
 serde_json = "1"
 serde_yaml = "0"
 tokio = { version = "1", features = ["full"] }
-toml = "0.7.1"
+toml = "0.7"
 url = "2"

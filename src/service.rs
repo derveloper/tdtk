@@ -54,6 +54,7 @@ pub async fn handle_service(repo_template: String) -> Result<()> {
         .repos(repo_owner.clone(), repo_name.clone())
         .get()
         .await;
+
     if repo.is_ok() {
         let ans = Select::new("Repo exists, do you want to delete it?", vec!["No", "Yes"])
             .prompt()
