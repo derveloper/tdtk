@@ -20,7 +20,7 @@ struct Config {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     let home_dir = dirs::home_dir().unwrap();
     let config_path = format!("{}/.config/tdtk.toml", home_dir.to_str().unwrap());
     let config: Option<Config> = fs::read_to_string(config_path).map(|toml_str| {
@@ -49,23 +49,20 @@ async fn main() {
             ]) {
                 Ok(choice) => {
                     match choice.choice {
-                        VaultSecret => match handle_vault_secret() {
-                            Ok(_) => {}
-                            Err(e) => println!("Failed to handle vault secret {}", e)
-                        },
-                        Service => {
-                            match handle_service(template_repo.to_string()).await {
-                                Ok(_) => {}
-                                Err(e) => println!("There was an error: {}", e)
-                            }
-                        }
+                        VaultSecret => handle_vault_secret()?,
+                        Service => handle_service(template_repo.to_string()).await?
                     }
                 }
-                Err(_) => println!("There was an error, please try again"),
-            };
+                Err(e) => {
+                    println!("Failed to get input: {}", e);
+                    return Ok(());
+                }
+            }
+            Ok(())
         }
         _ => {
             println!("Please provide a template repo name");
+            Ok(())
         }
     }
 }

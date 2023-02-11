@@ -120,7 +120,7 @@ fn prompt_vault_file_path() -> Result<String> {
         .with_autocomplete(FilePathCompleter::default())
         .prompt()
         .with_context(|| "Failed to get vault file path")?;
-    if vault_file_path.starts_with("./") {
+    if vault_file_path.starts_with("./") || vault_file_path.starts_with("/") {
         Ok(vault_file_path)
     } else {
         Ok("./".to_string() + &*vault_file_path)
