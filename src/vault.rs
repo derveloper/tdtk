@@ -39,8 +39,8 @@ pub fn handle_vault_secret() -> Result<()> {
         ]) {
             Ok(choice) => {
                 match choice.choice {
-                    Generate => handle_vault_secret_generate(vault_password)?,
-                    Import => handle_vault_secret_import(vault_password)?,
+                    Generate => handle_vault_secret_generate(&vault_password)?,
+                    Import => handle_vault_secret_import(&vault_password)?,
                 }
             }
             Err(_) => println!("There was an error, please try again"),
@@ -60,7 +60,7 @@ fn prompt_secret_name() -> Result<String> {
     }).with_context(|| "Failed to get secret name")
 }
 
-fn handle_vault_secret_import(vault_password: String) -> Result<()> {
+fn handle_vault_secret_import(vault_password: &String) -> Result<()> {
     let secret_name = prompt_secret_name()?;
     let secret = Password::new("The secret text")
         .with_display_mode(PasswordDisplayMode::Masked)
@@ -68,40 +68,41 @@ fn handle_vault_secret_import(vault_password: String) -> Result<()> {
         .prompt()
         .with_context(|| "Failed to get secret text")?;
 
-    add_vault_secret(vault_password, secret_name, Some(secret))
+    add_vault_secret(vault_password, &secret_name, Some(&secret))
 }
 
-fn handle_vault_secret_generate(vault_password: String) -> Result<()> {
+fn handle_vault_secret_generate(vault_password: &String) -> Result<()> {
     let secret_name = prompt_secret_name()?;
-    add_vault_secret(vault_password, secret_name, None)
+    add_vault_secret(vault_password, &secret_name, None)
 }
 
-fn add_vault_secret(vault_password: String, secret_name: String, secret: Option<String>) -> Result<()> {
+fn add_vault_secret(vault_password: &String, secret_name: &String, secret: Option<&String>) -> Result<()> {
     let vault_file_path = prompt_vault_file_path()?;
     let path = Path::new(vault_file_path.as_str());
 
     if !path.exists() {
         io::stdout().flush().unwrap();
-        create_vault_file(vault_file_path.as_str(), vault_password.clone())?;
+        create_vault_file(vault_file_path.as_str(), vault_password)?;
     }
 
     if !path.is_file() {
         add_vault_secret(
-            vault_password.clone(),
-            secret_name.clone(),
-            secret.clone(),
+            vault_password,
+            secret_name,
+            secret,
         )?;
     } else {
-        let absolute_vault_file_path = fs::canonicalize(vault_file_path.clone())
+        let absolute_vault_file_path = fs::canonicalize(vault_file_path)
             .with_context(|| "Failed to get absolute vault file path")?;
         let absolute_vault_file_path = absolute_vault_file_path.to_str().unwrap();
 
+        let new_secret = generate_secret();
         let secret = match secret {
             Some(secret) => secret,
-            None => generate_secret(),
+            None => &new_secret,
         };
 
-        add_vault_secret_to_file(secret_name, secret, absolute_vault_file_path, vault_password)?
+        add_vault_secret_to_file(&secret_name, &secret, absolute_vault_file_path, &vault_password)?
     }
 
     Ok(())
@@ -127,9 +128,9 @@ fn prompt_vault_file_path() -> Result<String> {
     }
 }
 
-fn add_vault_secret_to_file(secret_name: String, secret: String, vault_file_path: &str, password: String) -> Result<()> {
-    let mut vault_file = decrypt_vault_file(vault_file_path, password.clone())?;
-    vault_file.insert(secret_name, secret);
+fn add_vault_secret_to_file(secret_name: &String, secret: &String, vault_file_path: &str, password: &String) -> Result<()> {
+    let mut vault_file = decrypt_vault_file(vault_file_path, password)?;
+    vault_file.insert(secret_name.clone(), secret.clone());
 
     let vault_file_string = serde_yaml::to_string(&vault_file).unwrap();
     let encrypted = ansible_vault::encrypt_vault(vault_file_string.as_bytes(), password.as_str())
@@ -138,14 +139,14 @@ fn add_vault_secret_to_file(secret_name: String, secret: String, vault_file_path
     fs::write(vault_file_path, encrypted).with_context(|| "Failed to write vault file")
 }
 
-fn decrypt_vault_file(file: &str, password: String) -> Result<BTreeMap<String, String>> {
+fn decrypt_vault_file(file: &str, password: &String) -> Result<BTreeMap<String, String>> {
     let decrypted = decrypt_vault_from_file(file, password.as_str())
         .with_context(|| "Failed to decrypt vault file")?;
     serde_yaml::from_str(str::from_utf8(&decrypted).with_context(|| "UTF-8 content expected")?)
         .with_context(|| "Failed to parse decrypted vault file")
 }
 
-fn create_vault_file(file_path: &str, password: String) -> Result<usize> {
+fn create_vault_file(file_path: &str, password: &String) -> Result<usize> {
     let mut file = File::create(file_path).with_context(|| "Failed to create vault file")?;
     let vault = ansible_vault::encrypt_vault("---".as_bytes(), password.as_str())
         .with_context(|| "Failed to encrypt vault")?;

@@ -65,7 +65,7 @@ pub async fn handle_service(repo_template: &String, spec_questions_path: Option<
         return Ok(());
     }
 
-    if Path::new(service_name.clone().as_str()).exists() {
+    if Path::new(service_name.as_str()).exists() {
         let ans = Select::new(
             "Directory exists, do you want to delete it?",
             vec!["No", "Yes"],
@@ -77,7 +77,7 @@ pub async fn handle_service(repo_template: &String, spec_questions_path: Option<
             return Ok(());
         }
 
-        fs::remove_dir_all(service_name.clone()).with_context(|| "Failed to remove service directory")?;
+        fs::remove_dir_all(&service_name).with_context(|| "Failed to remove service directory")?;
     }
 
     let service_description = Text::new("What is the description of the service?")
@@ -91,10 +91,10 @@ pub async fn handle_service(repo_template: &String, spec_questions_path: Option<
     let octocrab = make_github_client(token_response)?;
 
     let user = octocrab.current().user().await.with_context(|| "Failed to get user")?;
-    let (repo_owner, repo_name) = split_repo_name(&service_name, user.clone());
+    let (repo_owner, repo_name) = split_repo_name(&service_name, &user);
 
     let repo = octocrab
-        .repos(repo_owner.clone(), repo_name.clone())
+        .repos(&repo_owner, &repo_name)
         .get()
         .await;
 
@@ -110,12 +110,12 @@ pub async fn handle_service(repo_template: &String, spec_questions_path: Option<
         delete_repo(&octocrab, &repo_owner, &repo_name).await?;
     }
 
-    let (template_owner, template_name) = split_repo_name(repo_template, user);
+    let (template_owner, template_name) = split_repo_name(repo_template, &user);
 
     create_repo(service_description, octocrab, &repo_owner, &repo_name, template_owner, template_name).await?;
 
     execute_command("git", &["clone", &format!("git@github.com:{repo_owner}/{repo_name}")], None)?;
-    execute_command("git", &["pull"], repo_name.clone().into())?;
+    execute_command("git", &["pull"], Some(&repo_name))?;
 
     if !answers.is_empty() {
         add_service_specs(answers, repo_name)?;
@@ -131,7 +131,14 @@ fn make_github_client(token_response: BasicTokenResponse) -> Result<Octocrab> {
         .with_context(|| "Failed to build octocrab")
 }
 
-async fn create_repo(service_description: String, octocrab: Octocrab, repo_owner: &String, repo_name: &String, template_owner: String, template_name: String) -> Result<()> {
+async fn create_repo(
+    service_description: String,
+    octocrab: Octocrab,
+    repo_owner: &String,
+    repo_name: &String,
+    template_owner: String,
+    template_name: String
+) -> Result<()> {
     octocrab
         .repos(template_owner, template_name)
         .generate(repo_name.as_str())
@@ -143,7 +150,11 @@ async fn create_repo(service_description: String, octocrab: Octocrab, repo_owner
         .with_context(|| "Failed to create repo")
 }
 
-async fn delete_repo(octocrab: &Octocrab, repo_owner: &String, repo_name: &String) -> Result<()> {
+async fn delete_repo(
+    octocrab: &Octocrab,
+    repo_owner: &String,
+    repo_name: &String
+) -> Result<()> {
     octocrab
         .repos(repo_owner.as_str(), repo_name.as_str())
         .delete()
@@ -151,10 +162,13 @@ async fn delete_repo(octocrab: &Octocrab, repo_owner: &String, repo_name: &Strin
         .with_context(|| "Failed to delete repo")
 }
 
-fn add_service_specs(answers: Vec<Answer>, repo_name: String) -> Result<()> {
+fn add_service_specs(
+    answers: Vec<Answer>,
+    repo_name: String
+) -> Result<()> {
     let spec_filename = ".service-specs.yaml";
-    let spec_path = format!("{}/{}", repo_name.clone(), spec_filename);
-    File::create(spec_path.clone())
+    let spec_path = format!("{}/{}", repo_name, spec_filename);
+    File::create(&spec_path)
         .with_context(|| format!("Failed to create {spec_filename}"))?;
     let specs_file = fs::read_to_string(spec_path.as_str())
         .with_context(|| format!("Failed to read {spec_filename}"))?;
@@ -168,52 +182,65 @@ fn add_service_specs(answers: Vec<Answer>, repo_name: String) -> Result<()> {
     fs::write(spec_path.as_str(), service_specs.as_bytes())
         .with_context(|| format!("Failed to write {spec_filename}"))?;
 
-    execute_command("git", &["add", ".service-specs.yaml"], repo_name.clone().into())?;
-    execute_command("git", &["commit", "-m", "add service-specs.yaml"], repo_name.clone().into())?;
-    execute_command("git", &["push", "origin", "main"], repo_name.into())?;
+    let repo_name = Some(&repo_name);
+    execute_command("git", &["add", ".service-specs.yaml"], repo_name)?;
+    execute_command("git", &["commit", "-m", "add service-specs.yaml"], repo_name)?;
+    execute_command("git", &["push", "origin", "main"], repo_name)?;
 
     Ok(())
+}
+
+macro_rules! check_condition {
+    ($question:expr, $answers:expr) => {
+        let condition = $question.clone().condition.unwrap();
+        let ans = $answers.iter().find(|a| a.name == condition.question);
+        if ans.is_none() {
+            continue;
+        }
+
+        let ans = ans.unwrap();
+        if !condition.values.contains(&ans.value) {
+            continue;
+        }
+    };
+}
+
+macro_rules! collect_answer {
+    ($question:expr, $answers:expr) => {
+        let options = $question.options.clone().unwrap();
+        let options: Vec<Choice<String>> = options.iter()
+            .map(|o| Choice { prompt: o.display.clone(), choice: o.value.clone() })
+            .collect();
+        let ans = select($question.question.as_str(), options)
+            .with_context(|| "Failed to get input")?;
+        $answers.push(Answer {
+            name: $question.clone().name,
+            value: ans.choice,
+        });
+    };
 }
 
 fn custom_questions(spec_questions_path: Option<&String>) -> Result<Vec<Answer>> {
     let mut answers: Vec<Answer> = Vec::new();
 
-    if spec_questions_path.is_some() && Path::new(spec_questions_path.clone().unwrap().as_str()).exists() {
-        let questions = fs::read_to_string(spec_questions_path.clone().unwrap())
+    if spec_questions_path.is_some() && Path::new(spec_questions_path.unwrap().as_str()).exists() {
+        let questions = fs::read_to_string(spec_questions_path.unwrap())
             .with_context(|| format!("Failed to read {spec_questions_path:?}"))?;
         let questions: Root = serde_yaml::from_str(questions.as_str())
             .with_context(|| format!("Failed to parse {spec_questions_path:?}"))?;
 
-        for question in questions.questions {
+        for question in &questions.questions {
             if question.condition.is_some() {
-                let condition = question.clone().condition.unwrap();
-                let ans = answers.iter().find(|a| a.name == condition.question);
-                if ans.is_none() {
-                    continue;
-                }
-
-                let ans = ans.unwrap();
-                if !condition.values.contains(&ans.value) {
-                    continue;
-                }
+                check_condition!(question, answers);
             }
-            if question.options.is_some() && question.clone().options.unwrap().len() > 0 {
-                let options = question.options.unwrap();
-                let options: Vec<Choice<String>> = options.iter()
-                    .map(|o| Choice { prompt: o.display.clone(), choice: o.value.clone() })
-                    .collect();
-                let ans = select(question.question.as_str(), options)
-                    .with_context(|| "Failed to get input")?;
-                answers.push(Answer {
-                    name: question.name,
-                    value: ans.choice,
-                });
+            if question.options.is_some() && question.options.clone().unwrap().len() > 0 {
+                collect_answer!(question, answers);
             } else {
                 let ans = Text::new(question.question.as_str())
                     .prompt()
                     .with_context(|| "Failed to get input")?;
                 answers.push(Answer {
-                    name: question.name,
+                    name: question.clone().name,
                     value: ans,
                 });
             }
@@ -222,7 +249,7 @@ fn custom_questions(spec_questions_path: Option<&String>) -> Result<Vec<Answer>>
     Ok(answers)
 }
 
-fn split_repo_name(service_name: &String, user: User) -> (String, String) {
+fn split_repo_name(service_name: &String, user: &User) -> (String, String) {
     let repo_owner;
     let repo_name;
 
@@ -231,7 +258,7 @@ fn split_repo_name(service_name: &String, user: User) -> (String, String) {
         repo_owner = parts.next().unwrap().to_string();
         repo_name = parts.next().unwrap().to_string();
     } else {
-        repo_owner = user.login;
+        repo_owner = user.clone().login;
         repo_name = service_name.clone();
     }
 
