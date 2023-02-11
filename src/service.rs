@@ -116,7 +116,9 @@ pub async fn handle_service(repo_template: &String, spec_questions_path: Option<
 
     execute_command("git", &["clone", &format!("git@github.com:{repo_owner}/{repo_name}")], None)?;
 
-    add_service_specs(answers, repo_name)?;
+    if !answers.is_empty() {
+        add_service_specs(answers, repo_name)?;
+    }
 
     Ok(())
 }
