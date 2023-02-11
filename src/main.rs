@@ -29,8 +29,8 @@ async fn main() -> anyhow::Result<()> {
     let config: Option<Config> = fs::read_to_string(config_path_cwd)
         .or(fs::read_to_string(config_path_home))
         .map(|toml_str| {
-        toml::from_str(toml_str.as_str()).unwrap()
-    }).unwrap_or(None);
+            toml::from_str(toml_str.as_str()).unwrap()
+        }).unwrap_or(None);
 
     let mut template_repo_arg = arg!([template_repo] "The name of the template repo (e.g. 'java-service', 'org/default-service)")
         .short('t')
