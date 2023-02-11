@@ -1834,7 +1834,7 @@ dependencies = [
 
 [[package]]
 name = "tdtk"
-version = "0.0.7"
+version = "0.0.8"
 dependencies = [
  "ansible-vault",
  "anyhow",

@@ -115,6 +115,7 @@ pub async fn handle_service(repo_template: &String, spec_questions_path: Option<
     create_repo(service_description, octocrab, &repo_owner, &repo_name, template_owner, template_name).await?;
 
     execute_command("git", &["clone", &format!("git@github.com:{repo_owner}/{repo_name}")], None)?;
+    execute_command("git", &["pull"], repo_name.clone().into())?;
 
     if !answers.is_empty() {
         add_service_specs(answers, repo_name)?;
