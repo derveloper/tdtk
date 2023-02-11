@@ -48,8 +48,8 @@ async fn main() -> anyhow::Result<()> {
     match matches.get_one::<String>("template_repo") {
         Some(template_repo) => {
             match select("What do you need to do?", vec![
-                Choice { choice: VaultSecret, prompt: "Create a ansible vault secret (password, token, key, ...)" },
-                Choice { choice: Service, prompt: "Create a new service" },
+                Choice { choice: VaultSecret, prompt: "Create a ansible vault secret (password, token, key, ...)".to_string() },
+                Choice { choice: Service, prompt: "Create a new service".to_string() },
             ]) {
                 Ok(choice) => {
                     match choice.choice {

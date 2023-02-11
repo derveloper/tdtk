@@ -34,8 +34,8 @@ pub fn handle_vault_secret() -> Result<()> {
         handle_vault_secret()?
     } else {
         match select("Do you want to generate a new secret?", vec![
-            Choice { choice: Generate, prompt: "Generate a new secret" },
-            Choice { choice: Import, prompt: "Import a secret" },
+            Choice { choice: Generate, prompt: "Generate a new secret".to_string() },
+            Choice { choice: Import, prompt: "Import a secret".to_string() },
         ]) {
             Ok(choice) => {
                 match choice.choice {

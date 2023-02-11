@@ -8,7 +8,7 @@ use oauth2::TokenResponse;
 use octocrab::models::User;
 use serde::{Deserialize, Serialize};
 
-use crate::core::execute_command;
+use crate::core::{Choice, execute_command, select};
 use crate::github::get_github_token;
 
 #[derive(Debug, Display, PartialEq, Eq, Clone, Deserialize, Serialize)]
@@ -26,7 +26,7 @@ struct Question {
 #[display(fmt = "display: {}, value: {:?}", display, value)]
 struct OptionElement {
     display: String,
-    value: Option<String>,
+    value: String,
 }
 
 #[derive(Debug, Display, PartialEq, Eq, Clone, Deserialize, Serialize)]
@@ -40,6 +40,13 @@ struct Condition {
 #[display(fmt = "questions: {:?}", questions)]
 struct Root {
     questions: Vec<Question>,
+}
+
+#[derive(Debug, Display, PartialEq, Eq, Clone, Deserialize, Serialize)]
+#[display(fmt = "name: {}, value: {}", name, value)]
+struct Answer {
+    name: String,
+    value: String,
 }
 
 pub async fn handle_service(repo_template: String) -> Result<()> {
@@ -78,19 +85,43 @@ pub async fn handle_service(repo_template: String) -> Result<()> {
     let questions: Root = serde_yaml::from_str(questions.as_str())
         .with_context(|| "Failed to parse service-spec.yaml")?;
 
+    let mut answers: Vec<Answer> = Vec::new();
     for question in questions.questions {
+        if question.condition.is_some() {
+            let condition = question.clone().condition.unwrap();
+            let ans = answers.iter().find(|a| a.name == condition.question);
+            if ans.is_none() {
+                continue;
+            }
+
+            let ans = ans.unwrap();
+            if !condition.values.contains(&ans.value) {
+                continue;
+            }
+        }
         if question.options.is_some() && question.clone().options.unwrap().len() > 0 {
             let options = question.options.unwrap();
-            let options: Vec<String> = options.iter().map(|o| o.display.clone()).collect();
-            let _ = Select::new(question.question.as_str(), options)
-                .prompt()
+            let options: Vec<Choice<String>> = options.iter()
+                .map(|o| Choice { prompt: o.display.clone(), choice: o.value.clone() })
+                .collect();
+            let ans = select(question.question.as_str(), options)
                 .with_context(|| "Failed to get input")?;
+            answers.push(Answer {
+                name: question.name,
+                value: ans.choice,
+            });
         } else {
-            let _ = Text::new(question.question.as_str())
+            let ans = Text::new(question.question.as_str())
                 .prompt()
                 .with_context(|| "Failed to get input")?;
+            answers.push(Answer {
+                name: question.name,
+                value: ans,
+            });
         }
     }
+
+    panic!("{:?}", answers);
 
     let token_response = get_github_token().await?;
 

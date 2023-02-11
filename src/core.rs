@@ -10,7 +10,7 @@ use inquire::Select;
 #[display(fmt = "{}", prompt)]
 pub struct Choice<T> where T: fmt::Display {
     pub(crate) choice: T,
-    pub(crate) prompt: &'static str,
+    pub(crate) prompt: String,
 }
 
 #[derive(Display)]
