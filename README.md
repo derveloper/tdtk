@@ -30,4 +30,14 @@ tdtk looks for a configuration file in the following locations, last found wins:
 ```toml
 # ./.tdtk.toml
 template_repo = "my-org/java-service-template"
+spec_questions_path = "spec-questions.yml"
 ```
+
+## Service tool
+
+You can provide a template repo to use for the service tool. This repo will be used as a template for the new repo.
+
+### DevOps
+
+You can provide a yaml file for asking custom questions which then will be uses to generate a `.service-specs.yaml` file in the new repo.
+See [`/spec-questions.yaml.sample`](/spec-questions.yaml.sample) for an example.
