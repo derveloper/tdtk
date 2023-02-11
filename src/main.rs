@@ -22,8 +22,12 @@ struct Config {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let home_dir = dirs::home_dir().unwrap();
-    let config_path = format!("{}/.config/tdtk.toml", home_dir.to_str().unwrap());
-    let config: Option<Config> = fs::read_to_string(config_path).map(|toml_str| {
+    let cwd = std::env::current_dir().unwrap();
+    let config_path_home = format!("{}/.config/tdtk.toml", home_dir.to_str().unwrap());
+    let config_path_cwd = format!("{}/.tdtk.toml", cwd.to_str().unwrap());
+    let config: Option<Config> = fs::read_to_string(config_path_cwd)
+        .or(fs::read_to_string(config_path_home))
+        .map(|toml_str| {
         toml::from_str(toml_str.as_str()).unwrap()
     }).unwrap_or(None);
 
@@ -37,7 +41,7 @@ async fn main() -> anyhow::Result<()> {
         }
     }
     let matches = command!() // requires `cargo` feature
-        .after_help("You can also set defaults in ~/.config/tdtk.toml")
+        .after_help("You can also set defaults in ~/.config/tdtk.toml or ./.tdtk.toml")
         .arg(template_repo_arg)
         .get_matches();
 

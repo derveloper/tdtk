@@ -16,4 +16,18 @@ Just run `tdtk`, it asks you to select a tool.
 ## Tools
 
 * Secret handling for ansible vaults
-* WIP: Service repo creation
+* Service repo creation
+  * Creates a new repo in github from a template repo
+
+## Configuration
+
+tdtk looks for a configuration file in the following locations, last found wins:
+* `~/.config/tdtk.toml`
+* `./.tdtk.toml`
+
+### Example configuration
+
+```toml
+# ./.tdtk.toml
+template_repo = "my-org/java-service-template"
+```

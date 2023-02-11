@@ -10,7 +10,7 @@ use crate::core::execute_command;
 use crate::github::get_github_token;
 
 pub async fn handle_service(repo_template: String) -> Result<()> {
-    let service_name = Text::new("(Alpha) What is the name of the service?")
+    let service_name = Text::new("What is the name of the service?")
         .prompt()
         .with_context(|| "Failed to get service name")?;
 
