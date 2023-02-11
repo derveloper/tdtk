@@ -155,6 +155,6 @@ fn create_vault_file(file_path: &str, password: String) -> Result<usize> {
 fn get_vault_password() -> Result<String> {
     let vault_password_file = std::env::var("ANSIBLE_VAULT_PASSWORD_FILE")
         .with_context(|| "ANSIBLE_VAULT_PASSWORD_FILE is not set")?;
-    execute_command(vault_password_file.as_str(), &[])
+    execute_command(vault_password_file.as_str(), &[], None)
         .map(|stdout| stdout.trim().to_string())
 }

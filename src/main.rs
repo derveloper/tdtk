@@ -17,6 +17,7 @@ mod github;
 #[derive(Debug, Deserialize)]
 struct Config {
     template_repo: Option<String>,
+    spec_questions_path: Option<String>,
 }
 
 #[tokio::main]
@@ -35,14 +36,23 @@ async fn main() -> anyhow::Result<()> {
         .short('t')
         .default_value("tdtk-template-repo");
 
+    let mut spec_questions_path_arg = arg!([spec_questions_path] "Path to the spec questions file")
+        .short('q')
+        .required(false);
+
     if let Some(config) = config {
         if let Some(template_repo) = config.template_repo {
             template_repo_arg = template_repo_arg.default_value(template_repo);
+        }
+
+        if let Some(spec_questions_path) = config.spec_questions_path {
+            spec_questions_path_arg = spec_questions_path_arg.default_value(spec_questions_path);
         }
     }
     let matches = command!() // requires `cargo` feature
         .after_help("You can also set defaults in ~/.config/tdtk.toml or ./.tdtk.toml")
         .arg(template_repo_arg)
+        .arg(spec_questions_path_arg)
         .get_matches();
 
     match matches.get_one::<String>("template_repo") {
@@ -54,7 +64,10 @@ async fn main() -> anyhow::Result<()> {
                 Ok(choice) => {
                     match choice.choice {
                         VaultSecret => handle_vault_secret()?,
-                        Service => handle_service(template_repo.to_string()).await?
+                        Service => {
+                            let spec_questions_path_arg = matches.get_one::<String>("spec_questions_path");
+                            handle_service(template_repo, spec_questions_path_arg).await?
+                        }
                     }
                 }
                 Err(e) => {

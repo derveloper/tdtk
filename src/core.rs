@@ -29,12 +29,14 @@ pub fn select<T>(prompt: &str, choices: Vec<Choice<T>>) -> InquireResult<Choice<
     Select::new(prompt, choices).prompt()
 }
 
-pub fn execute_command(command: &str, args: &[&str]) -> Result<String> {
+pub fn execute_command(command: &str, args: &[&str], wd: Option<String>) -> Result<String> {
     let output = Command::new(command)
         .args(args)
+        .current_dir(wd.unwrap_or(".".to_string()))
         .output()
         .with_context(|| format!("Failed to execute process `{}`", command))?;
 
+    println!("{}", String::from_utf8_lossy(&output.stdout));
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(anyhow!("Failed to execute command `{} {}`, stderr:\n{}",

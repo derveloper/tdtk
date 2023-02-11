@@ -1,4 +1,6 @@
+use std::collections::BTreeMap;
 use std::fs;
+use std::fs::File;
 use std::path::Path;
 
 use anyhow::{Context, Result};
@@ -49,7 +51,7 @@ struct Answer {
     value: String,
 }
 
-pub async fn handle_service(repo_template: String) -> Result<()> {
+pub async fn handle_service(repo_template: &String, spec_questions_path: Option<&String>) -> Result<()> {
     let service_name = Text::new("What is the name of the service?")
         .prompt()
         .with_context(|| "Failed to get service name")?;
@@ -80,48 +82,49 @@ pub async fn handle_service(repo_template: String) -> Result<()> {
         .prompt()
         .with_context(|| "Failed to get service description")?;
 
-    let questions = fs::read_to_string("service-spec.yaml")
-        .with_context(|| "Failed to read service-spec.yaml")?;
-    let questions: Root = serde_yaml::from_str(questions.as_str())
-        .with_context(|| "Failed to parse service-spec.yaml")?;
-
     let mut answers: Vec<Answer> = Vec::new();
-    for question in questions.questions {
-        if question.condition.is_some() {
-            let condition = question.clone().condition.unwrap();
-            let ans = answers.iter().find(|a| a.name == condition.question);
-            if ans.is_none() {
-                continue;
-            }
 
-            let ans = ans.unwrap();
-            if !condition.values.contains(&ans.value) {
-                continue;
+    if spec_questions_path.is_some() && Path::new(spec_questions_path.clone().unwrap().as_str()).exists() {
+        let questions = fs::read_to_string(spec_questions_path.clone().unwrap())
+            .with_context(|| format!("Failed to read {spec_questions_path:?}"))?;
+        let questions: Root = serde_yaml::from_str(questions.as_str())
+            .with_context(|| format!("Failed to parse {spec_questions_path:?}"))?;
+
+        for question in questions.questions {
+            if question.condition.is_some() {
+                let condition = question.clone().condition.unwrap();
+                let ans = answers.iter().find(|a| a.name == condition.question);
+                if ans.is_none() {
+                    continue;
+                }
+
+                let ans = ans.unwrap();
+                if !condition.values.contains(&ans.value) {
+                    continue;
+                }
             }
-        }
-        if question.options.is_some() && question.clone().options.unwrap().len() > 0 {
-            let options = question.options.unwrap();
-            let options: Vec<Choice<String>> = options.iter()
-                .map(|o| Choice { prompt: o.display.clone(), choice: o.value.clone() })
-                .collect();
-            let ans = select(question.question.as_str(), options)
-                .with_context(|| "Failed to get input")?;
-            answers.push(Answer {
-                name: question.name,
-                value: ans.choice,
-            });
-        } else {
-            let ans = Text::new(question.question.as_str())
-                .prompt()
-                .with_context(|| "Failed to get input")?;
-            answers.push(Answer {
-                name: question.name,
-                value: ans,
-            });
+            if question.options.is_some() && question.clone().options.unwrap().len() > 0 {
+                let options = question.options.unwrap();
+                let options: Vec<Choice<String>> = options.iter()
+                    .map(|o| Choice { prompt: o.display.clone(), choice: o.value.clone() })
+                    .collect();
+                let ans = select(question.question.as_str(), options)
+                    .with_context(|| "Failed to get input")?;
+                answers.push(Answer {
+                    name: question.name,
+                    value: ans.choice,
+                });
+            } else {
+                let ans = Text::new(question.question.as_str())
+                    .prompt()
+                    .with_context(|| "Failed to get input")?;
+                answers.push(Answer {
+                    name: question.name,
+                    value: ans,
+                });
+            }
         }
     }
-
-    panic!("{:?}", answers);
 
     let token_response = get_github_token().await?;
 
@@ -131,7 +134,7 @@ pub async fn handle_service(repo_template: String) -> Result<()> {
         .with_context(|| "Failed to build octocrab")?;
 
     let user = octocrab.current().user().await.with_context(|| "Failed to get user")?;
-    let (repo_owner, repo_name) = split_repo_name(service_name, user.clone());
+    let (repo_owner, repo_name) = split_repo_name(&service_name, user.clone());
 
     let repo = octocrab
         .repos(repo_owner.clone(), repo_name.clone())
@@ -166,12 +169,32 @@ pub async fn handle_service(repo_template: String) -> Result<()> {
         .await
         .with_context(|| "Failed to create repo")?;
 
-    execute_command("git", &["clone", &format!("git@github.com:{repo_owner}/{repo_name}")])?;
+    execute_command("git", &["clone", &format!("git@github.com:{repo_owner}/{repo_name}")], None)?;
+
+    let spec_filename = ".service-specs.yaml";
+    let spec_path = format!("{}/{}", repo_name.clone(), spec_filename);
+    File::create(spec_path.clone())
+        .with_context(|| format!("Failed to create {spec_filename}"))?;
+    let specs_file = fs::read_to_string(spec_path.as_str())
+        .with_context(|| format!("Failed to read {spec_filename}"))?;
+    let mut service_specs: BTreeMap<String, String> = serde_yaml::from_str(specs_file.as_str())
+        .with_context(|| format!("Failed to parse {spec_filename}"))?;
+    for answer in answers {
+        service_specs.insert(answer.name, answer.value);
+    }
+    let service_specs = serde_yaml::to_string(&service_specs)
+        .with_context(|| format!("Failed to serialize {spec_filename}"))?;
+    fs::write(spec_path.as_str(), service_specs.as_bytes())
+        .with_context(|| format!("Failed to write {spec_filename}"))?;
+
+    execute_command("git", &["add", ".service-specs.yaml"], repo_name.clone().into())?;
+    execute_command("git", &["commit", "-m", "add service-specs.yaml"], repo_name.clone().into())?;
+    execute_command("git", &["push", "origin", "main"], repo_name.into())?;
 
     Ok(())
 }
 
-fn split_repo_name(service_name: String, user: User) -> (String, String) {
+fn split_repo_name(service_name: &String, user: User) -> (String, String) {
     let repo_owner;
     let repo_name;
 
@@ -181,7 +204,7 @@ fn split_repo_name(service_name: String, user: User) -> (String, String) {
         repo_name = parts.next().unwrap().to_string();
     } else {
         repo_owner = user.login;
-        repo_name = service_name;
+        repo_name = service_name.clone();
     }
 
     (repo_owner, repo_name)

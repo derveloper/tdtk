@@ -1,0 +1,31 @@
+---
+questions:
+  - name: owner
+    question: Who owns of the service?
+    required: true
+  - name: on-call
+    question: What is the SLA for on-call?
+    required: true
+    default: 0
+    options:
+      - display: No on-call
+        value: 0
+      - display: Business Hours (06:00-20:00), excluding weekends and public holidays
+        value: 1
+      - display: Business Hours (06:00-20:00), including weekends and public holidays
+        value: 2
+      - display: Mission Critical, on-call 24/7
+        value: 3
+  - name: on-call-group
+    question: What is the on-call group?
+    type: string
+    required: true
+    condition:
+      question: on-call
+      values:
+        - 1
+        - 2
+        - 3
+    options:
+      - display: DevOps
+        value: "dev-ops"
