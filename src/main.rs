@@ -1,16 +1,18 @@
+use std::fs;
+
+use clap::{arg, command};
+use serde::Deserialize;
+
+use crate::core::{Choice, select};
+use crate::core::Chores::{Service, VaultSecret};
+use crate::service::handle_service;
+use crate::vault::handle_vault_secret;
+
 mod vault;
 mod core;
 mod completer;
 mod service;
 mod github;
-
-use std::fs;
-use crate::core::{Choice, select};
-use crate::core::Chores::{Service, VaultSecret};
-use crate::service::handle_service;
-use crate::vault::handle_vault_secret;
-use clap::{arg, command};
-use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 struct Config {
@@ -47,8 +49,16 @@ async fn main() {
             ]) {
                 Ok(choice) => {
                     match choice.choice {
-                        VaultSecret => handle_vault_secret(),
-                        Service => handle_service(template_repo.to_string()).await,
+                        VaultSecret => match handle_vault_secret() {
+                            Ok(_) => {}
+                            Err(e) => println!("Failed to handle vault secret {}", e)
+                        },
+                        Service => {
+                            match handle_service(template_repo.to_string()).await {
+                                Ok(_) => {}
+                                Err(e) => println!("There was an error: {}", e)
+                            }
+                        }
                     }
                 }
                 Err(_) => println!("There was an error, please try again"),

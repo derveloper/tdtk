@@ -1,22 +1,24 @@
 use std::fs;
 use std::path::Path;
 
-use crate::core::execute_command;
-use crate::github::get_github_token;
+use anyhow::{Context, Result};
 use inquire::{Select, Text};
 use oauth2::TokenResponse;
 use octocrab::models::User;
 
-pub async fn handle_service(repo_template: String) {
+use crate::core::execute_command;
+use crate::github::get_github_token;
+
+pub async fn handle_service(repo_template: String) -> Result<()> {
     let service_name = Text::new("(Alpha) What is the name of the service?")
         .prompt()
-        .expect("Failed to get service name");
+        .with_context(|| "Failed to get service name")?;
 
     let service_name = service_name.trim().to_string();
     let service_name = service_name.replace(" ", "-");
     if service_name.trim().is_empty() {
         println!("Service name cannot be empty");
-        return;
+        return Ok(());
     }
 
     if Path::new(service_name.clone().as_str()).exists() {
@@ -25,27 +27,27 @@ pub async fn handle_service(repo_template: String) {
             vec!["No", "Yes"],
         )
             .prompt()
-            .expect("Failed to get input");
+            .with_context(|| "Failed to get input")?;
         if ans == "No" {
             print!("Nothing to do, exiting");
-            return;
+            return Ok(());
         }
 
-        fs::remove_dir_all(service_name.clone()).expect("Failed to remove service directory");
+        fs::remove_dir_all(service_name.clone()).with_context(|| "Failed to remove service directory")?;
     }
 
     let service_description = Text::new("What is the description of the service?")
         .prompt()
-        .expect("Failed to get service description");
+        .with_context(|| "Failed to get service description")?;
 
-    let token_response = get_github_token().await;
+    let token_response = get_github_token().await?;
 
     let octocrab = octocrab::Octocrab::builder()
         .personal_token(token_response.access_token().secret().to_string())
         .build()
-        .expect("Failed to build octocrab");
+        .with_context(|| "Failed to build octocrab")?;
 
-    let user = octocrab.current().user().await.expect("Failed to get user");
+    let user = octocrab.current().user().await.with_context(|| "Failed to get user")?;
     let (repo_owner, repo_name) = split_repo_name(service_name, user.clone());
 
     let repo = octocrab
@@ -55,17 +57,17 @@ pub async fn handle_service(repo_template: String) {
     if repo.is_ok() {
         let ans = Select::new("Repo exists, do you want to delete it?", vec!["No", "Yes"])
             .prompt()
-            .expect("Failed to get input");
+            .with_context(|| "Failed to get input")?;
         if ans == "No" {
             print!("Nothing to do, exiting");
-            return;
+            return Ok(());
         }
 
         octocrab
             .repos(repo_owner.as_str(), repo_name.as_str())
             .delete()
             .await
-            .expect("Failed to delete repo");
+            .with_context(|| "Failed to delete repo")?;
     }
 
     let (template_owner, template_name) = split_repo_name(repo_template, user);
@@ -78,12 +80,11 @@ pub async fn handle_service(repo_template: String) {
         .private(true)
         .send()
         .await
-        .expect("Failed to create repo");
+        .with_context(|| "Failed to create repo")?;
 
-    execute_command(
-        format!("git clone git@github.com:{repo_owner}/{repo_name}").to_string(),
-        None,
-    );
+    execute_command("git", &["clone", &format!("git@github.com:{repo_owner}/{repo_name}")])?;
+
+    Ok(())
 }
 
 fn split_repo_name(service_name: String, user: User) -> (String, String) {

@@ -1,4 +1,5 @@
 use std::io::ErrorKind;
+
 use inquire::{Autocomplete, CustomUserError};
 use inquire::autocompletion::Replacement;
 

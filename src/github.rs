@@ -13,16 +13,16 @@
 //! ...and follow the instructions.
 //!
 
+use anyhow::{Context, Result};
+use oauth2::{AuthorizationCode, AuthUrl, ClientId, ClientSecret, CsrfToken, RedirectUrl, Scope, TokenUrl};
 use oauth2::basic::{BasicClient, BasicTokenResponse};
-
 // Alternatively, this can be `oauth2::curl::http_client` or a custom client.
-use oauth2::reqwest::{async_http_client};
-use oauth2::{AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, RedirectUrl, Scope, TokenUrl};
+use oauth2::reqwest::async_http_client;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
 use url::Url;
 
-pub(crate) async fn get_github_token() -> BasicTokenResponse {
+pub(crate) async fn get_github_token() -> Result<BasicTokenResponse> {
     let github_client_id = ClientId::new(
         env!("GH_CLIENT_ID").to_string()
     );
@@ -30,9 +30,9 @@ pub(crate) async fn get_github_token() -> BasicTokenResponse {
         env!("GH_CLIENT_SECRET").to_string()
     );
     let auth_url = AuthUrl::new("https://github.com/login/oauth/authorize".to_string())
-        .expect("Invalid authorization endpoint URL");
+        .with_context(|| "Invalid authorization endpoint URL")?;
     let token_url = TokenUrl::new("https://github.com/login/oauth/access_token".to_string())
-        .expect("Invalid token endpoint URL");
+        .with_context(|| "Invalid token endpoint URL")?;
 
     // Set up the config for the Github OAuth2 process.
     let client = BasicClient::new(
@@ -44,7 +44,7 @@ pub(crate) async fn get_github_token() -> BasicTokenResponse {
         // This example will be running its own server at localhost:8080.
         // See below for the server implementation.
         .set_redirect_uri(
-            RedirectUrl::new("http://localhost:8080".to_string()).expect("Invalid redirect URL"),
+            RedirectUrl::new("http://localhost:8080".to_string()).with_context(|| "Invalid redirect URL")?,
         );
 
     // Generate the authorization URL to which we'll redirect the user.
@@ -106,5 +106,5 @@ pub(crate) async fn get_github_token() -> BasicTokenResponse {
         }
     }
 
-    return token_res.expect("Error getting token");
+    token_res.with_context(|| "Error getting token")
 }
