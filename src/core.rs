@@ -25,13 +25,13 @@ pub enum Chores {
 }
 
 pub fn select<T>(prompt: &str, choices: Vec<T>) -> Result<T> where T: fmt::Display {
-    Select::new(prompt, choices).prompt().with_context(|| format!("Failed to select `{}`", prompt))
+    Select::new(prompt, choices).prompt().context(format!("Failed to select `{}`", prompt))
 }
 
 pub fn text<T>(prompt: T) -> Result<String> where T: Into<String> {
     Text::new(prompt.into().as_str())
         .prompt()
-        .with_context(|| "Failed to get input")
+        .context("Failed to get input")
 }
 
 pub fn execute_command(command: &str, args: &[&str], wd: Option<&String>) -> Result<String> {
@@ -39,7 +39,7 @@ pub fn execute_command(command: &str, args: &[&str], wd: Option<&String>) -> Res
         .args(args)
         .current_dir(wd.unwrap_or(&".".to_string()))
         .output()
-        .with_context(|| format!("Failed to execute process `{}`", command))?;
+        .context(format!("Failed to execute process `{}`", command))?;
 
     println!("{}", String::from_utf8_lossy(&output.stdout));
     if !output.status.success() {

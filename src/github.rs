@@ -30,9 +30,9 @@ pub(crate) async fn get_github_token() -> Result<BasicTokenResponse> {
         env!("GH_CLIENT_SECRET").to_string()
     );
     let auth_url = AuthUrl::new("https://github.com/login/oauth/authorize".to_string())
-        .with_context(|| "Invalid authorization endpoint URL")?;
+        .context("Invalid authorization endpoint URL")?;
     let token_url = TokenUrl::new("https://github.com/login/oauth/access_token".to_string())
-        .with_context(|| "Invalid token endpoint URL")?;
+        .context("Invalid token endpoint URL")?;
 
     // Set up the config for the Github OAuth2 process.
     let client = BasicClient::new(
@@ -44,7 +44,7 @@ pub(crate) async fn get_github_token() -> Result<BasicTokenResponse> {
         // This example will be running its own server at localhost:8080.
         // See below for the server implementation.
         .set_redirect_uri(
-            RedirectUrl::new("http://localhost:8080".to_string()).with_context(|| "Invalid redirect URL")?,
+            RedirectUrl::new("http://localhost:8080".to_string()).context("Invalid redirect URL")?,
         );
 
     // Generate the authorization URL to which we'll redirect the user.
@@ -106,5 +106,5 @@ pub(crate) async fn get_github_token() -> Result<BasicTokenResponse> {
         }
     }
 
-    token_res.with_context(|| "Error getting token")
+    token_res.context("Error getting token")
 }

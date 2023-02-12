@@ -22,7 +22,7 @@ pub fn handle_vault_secret() -> Result<()> {
             .with_display_mode(PasswordDisplayMode::Masked)
             .without_confirmation()
             .prompt()
-            .with_context(|| "Failed to get vault password")?
+            .context("Failed to get vault password")?
     } else {
         println!("Using ANSIBLE_VAULT_PASSWORD_FILE environment variable");
         get_vault_password()?
@@ -57,7 +57,7 @@ fn prompt_secret_name() -> Result<String> {
         let re = Regex::new(r"[^A-Za-z0-9]").unwrap();
         let name = re.replace_all(&name.trim().to_string(), "_").to_string();
         if name.starts_with("vault_") { name } else { format!("vault_{}", name) }
-    }).with_context(|| "Failed to get secret name")
+    }).context("Failed to get secret name")
 }
 
 fn handle_vault_secret_import(vault_password: &String) -> Result<()> {
@@ -66,7 +66,7 @@ fn handle_vault_secret_import(vault_password: &String) -> Result<()> {
         .with_display_mode(PasswordDisplayMode::Masked)
         .without_confirmation()
         .prompt()
-        .with_context(|| "Failed to get secret text")?;
+        .context("Failed to get secret text")?;
 
     add_vault_secret(vault_password, &secret_name, Some(&secret))
 }
@@ -93,7 +93,7 @@ fn add_vault_secret(vault_password: &String, secret_name: &String, secret: Optio
         )?;
     } else {
         let absolute_vault_file_path = fs::canonicalize(vault_file_path)
-            .with_context(|| "Failed to get absolute vault file path")?;
+            .context("Failed to get absolute vault file path")?;
         let absolute_vault_file_path = absolute_vault_file_path.to_str().unwrap();
 
         let new_secret = generate_secret();
@@ -120,7 +120,7 @@ fn prompt_vault_file_path() -> Result<String> {
     let vault_file_path = Text::new("Where is the vault file located? (tab to autocomplete)")
         .with_autocomplete(FilePathCompleter::default())
         .prompt()
-        .with_context(|| "Failed to get vault file path")?;
+        .context("Failed to get vault file path")?;
     if vault_file_path.starts_with("./") || vault_file_path.starts_with("/") {
         Ok(vault_file_path)
     } else {
@@ -134,28 +134,28 @@ fn add_vault_secret_to_file(secret_name: &String, secret: &String, vault_file_pa
 
     let vault_file_string = serde_yaml::to_string(&vault_file).unwrap();
     let encrypted = ansible_vault::encrypt_vault(vault_file_string.as_bytes(), password.as_str())
-        .with_context(|| "Failed to encrypt vault")?;
+        .context("Failed to encrypt vault")?;
 
-    fs::write(vault_file_path, encrypted).with_context(|| "Failed to write vault file")
+    fs::write(vault_file_path, encrypted).context("Failed to write vault file")
 }
 
 fn decrypt_vault_file(file: &str, password: &String) -> Result<BTreeMap<String, String>> {
     let decrypted = decrypt_vault_from_file(file, password.as_str())
-        .with_context(|| "Failed to decrypt vault file")?;
-    serde_yaml::from_str(str::from_utf8(&decrypted).with_context(|| "UTF-8 content expected")?)
-        .with_context(|| "Failed to parse decrypted vault file")
+        .context("Failed to decrypt vault file")?;
+    serde_yaml::from_str(str::from_utf8(&decrypted).context("UTF-8 content expected")?)
+        .context("Failed to parse decrypted vault file")
 }
 
 fn create_vault_file(file_path: &str, password: &String) -> Result<usize> {
-    let mut file = File::create(file_path).with_context(|| "Failed to create vault file")?;
+    let mut file = File::create(file_path).context("Failed to create vault file")?;
     let vault = ansible_vault::encrypt_vault("---".as_bytes(), password.as_str())
-        .with_context(|| "Failed to encrypt vault")?;
-    file.write(vault.as_bytes()).with_context(|| "Failed to write vault file")
+        .context("Failed to encrypt vault")?;
+    file.write(vault.as_bytes()).context("Failed to write vault file")
 }
 
 fn get_vault_password() -> Result<String> {
     let vault_password_file = std::env::var("ANSIBLE_VAULT_PASSWORD_FILE")
-        .with_context(|| "ANSIBLE_VAULT_PASSWORD_FILE is not set")?;
+        .context("ANSIBLE_VAULT_PASSWORD_FILE is not set")?;
     execute_command(vault_password_file.as_str(), &[], None)
         .map(|stdout| stdout.trim().to_string())
 }

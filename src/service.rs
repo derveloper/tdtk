@@ -72,7 +72,7 @@ pub async fn handle_service(repo_template: &String, spec_questions_path: Option<
             return Ok(());
         }
 
-        fs::remove_dir_all(&service_name).with_context(|| "Failed to remove service directory")?;
+        fs::remove_dir_all(&service_name).context("Failed to remove service directory")?;
     }
 
     let service_description = text("What is the description of the service?")?;
@@ -83,7 +83,7 @@ pub async fn handle_service(repo_template: &String, spec_questions_path: Option<
 
     let octocrab = make_github_client(token_response)?;
 
-    let user = octocrab.current().user().await.with_context(|| "Failed to get user")?;
+    let user = octocrab.current().user().await.context("Failed to get user")?;
     let (repo_owner, repo_name) = split_repo_name(&service_name, &user);
 
     let repo = octocrab
@@ -119,7 +119,7 @@ fn make_github_client(token_response: BasicTokenResponse) -> Result<Octocrab> {
     Octocrab::builder()
         .personal_token(token_response.access_token().secret().to_string())
         .build()
-        .with_context(|| "Failed to build octocrab")
+        .context("Failed to build octocrab")
 }
 
 async fn create_repo(
@@ -138,7 +138,7 @@ async fn create_repo(
         .private(true)
         .send()
         .await
-        .with_context(|| "Failed to create repo")
+        .context("Failed to create repo")
 }
 
 async fn delete_repo(
@@ -150,7 +150,7 @@ async fn delete_repo(
         .repos(repo_owner.as_str(), repo_name.as_str())
         .delete()
         .await
-        .with_context(|| "Failed to delete repo")
+        .context("Failed to delete repo")
 }
 
 fn add_service_specs(
@@ -160,18 +160,18 @@ fn add_service_specs(
     let spec_filename = ".service-specs.yaml";
     let spec_path = format!("{}/{}", repo_name, spec_filename);
     File::create(&spec_path)
-        .with_context(|| format!("Failed to create {spec_filename}"))?;
+        .context(format!("Failed to create {spec_filename}"))?;
     let specs_file = fs::read_to_string(spec_path.as_str())
-        .with_context(|| format!("Failed to read {spec_filename}"))?;
+        .context(format!("Failed to read {spec_filename}"))?;
     let mut service_specs: BTreeMap<String, String> = serde_yaml::from_str(specs_file.as_str())
-        .with_context(|| format!("Failed to parse {spec_filename}"))?;
+        .context(format!("Failed to parse {spec_filename}"))?;
     for answer in answers {
         service_specs.insert(answer.name, answer.value);
     }
     let service_specs = serde_yaml::to_string(&service_specs)
-        .with_context(|| format!("Failed to serialize {spec_filename}"))?;
+        .context(format!("Failed to serialize {spec_filename}"))?;
     fs::write(spec_path.as_str(), service_specs.as_bytes())
-        .with_context(|| format!("Failed to write {spec_filename}"))?;
+        .context(format!("Failed to write {spec_filename}"))?;
 
     let repo_name = Some(&repo_name);
     execute_command("git", &["add", ".service-specs.yaml"], repo_name)?;
@@ -201,9 +201,9 @@ fn custom_questions(spec_questions_path: Option<&String>) -> Result<Vec<Answer>>
 
     if spec_questions_path.is_some() && Path::new(spec_questions_path.unwrap().as_str()).exists() {
         let questions = fs::read_to_string(spec_questions_path.unwrap())
-            .with_context(|| format!("Failed to read {spec_questions_path:?}"))?;
+            .context(format!("Failed to read {spec_questions_path:?}"))?;
         let questions: Root = serde_yaml::from_str(questions.as_str())
-            .with_context(|| format!("Failed to parse {spec_questions_path:?}"))?;
+            .context(format!("Failed to parse {spec_questions_path:?}"))?;
 
         for question in &questions.questions {
             if question.condition.is_some() {
