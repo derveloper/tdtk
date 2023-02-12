@@ -81,7 +81,7 @@ fn add_vault_secret(vault_password: &String, secret_name: &String, secret: Optio
     let path = Path::new(vault_file_path.as_str());
 
     if !path.exists() {
-        io::stdout().flush().unwrap();
+        io::stdout().flush()?;
         create_vault_file(vault_file_path.as_str(), vault_password)?;
     }
 
@@ -96,11 +96,8 @@ fn add_vault_secret(vault_password: &String, secret_name: &String, secret: Optio
             .context("Failed to get absolute vault file path")?;
         let absolute_vault_file_path = absolute_vault_file_path.to_str().unwrap();
 
-        let new_secret = generate_secret();
-        let secret = match secret {
-            Some(secret) => secret,
-            None => &new_secret,
-        };
+        let generated_secret = generate_secret();
+        let secret = secret.unwrap_or(&generated_secret);
 
         add_vault_secret_to_file(&secret_name, &secret, absolute_vault_file_path, &vault_password)?
     }
@@ -132,7 +129,7 @@ fn add_vault_secret_to_file(secret_name: &String, secret: &String, vault_file_pa
     let mut vault_file = decrypt_vault_file(vault_file_path, password)?;
     vault_file.insert(secret_name.clone(), secret.clone());
 
-    let vault_file_string = serde_yaml::to_string(&vault_file).unwrap();
+    let vault_file_string = serde_yaml::to_string(&vault_file)?;
     let encrypted = ansible_vault::encrypt_vault(vault_file_string.as_bytes(), password.as_str())
         .context("Failed to encrypt vault")?;
 

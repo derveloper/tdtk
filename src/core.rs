@@ -25,7 +25,9 @@ pub enum Chores {
 }
 
 pub fn select<T>(prompt: &str, choices: Vec<T>) -> Result<T> where T: fmt::Display {
-    Select::new(prompt, choices).prompt().context(format!("Failed to select `{}`", prompt))
+    Select::new(prompt, choices)
+        .prompt()
+        .context(format!("Failed to select `{}`", prompt))
 }
 
 pub fn text<T>(prompt: T) -> Result<String> where T: Into<String> {

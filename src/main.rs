@@ -23,7 +23,7 @@ struct Config {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let home_dir = dirs::home_dir().unwrap();
-    let cwd = std::env::current_dir().unwrap();
+    let cwd = std::env::current_dir()?;
     let config_path_home = format!("{}/.config/tdtk.toml", home_dir.to_str().unwrap());
     let config_path_cwd = format!("{}/.tdtk.toml", cwd.to_str().unwrap());
     let config: Option<Config> = fs::read_to_string(config_path_cwd)

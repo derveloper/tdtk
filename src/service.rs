@@ -84,7 +84,7 @@ pub async fn handle_service(repo_template: &String, spec_questions_path: Option<
     let octocrab = make_github_client(token_response)?;
 
     let user = octocrab.current().user().await.context("Failed to get user")?;
-    let (repo_owner, repo_name) = split_repo_name(&service_name, &user);
+    let (repo_owner, repo_name) = split_repo_name(&service_name, &user)?;
 
     let repo = octocrab
         .repos(&repo_owner, &repo_name)
@@ -101,7 +101,7 @@ pub async fn handle_service(repo_template: &String, spec_questions_path: Option<
         delete_repo(&octocrab, &repo_owner, &repo_name).await?;
     }
 
-    let (template_owner, template_name) = split_repo_name(repo_template, &user);
+    let (template_owner, template_name) = split_repo_name(repo_template, &user)?;
 
     create_repo(service_description, octocrab, &repo_owner, &repo_name, template_owner, template_name).await?;
 
@@ -159,17 +159,23 @@ fn add_service_specs(
 ) -> Result<()> {
     let spec_filename = ".service-specs.yaml";
     let spec_path = format!("{}/{}", repo_name, spec_filename);
+
     File::create(&spec_path)
         .context(format!("Failed to create {spec_filename}"))?;
+
     let specs_file = fs::read_to_string(spec_path.as_str())
         .context(format!("Failed to read {spec_filename}"))?;
+
     let mut service_specs: BTreeMap<String, String> = serde_yaml::from_str(specs_file.as_str())
         .context(format!("Failed to parse {spec_filename}"))?;
+
     for answer in answers {
         service_specs.insert(answer.name, answer.value);
     }
+
     let service_specs = serde_yaml::to_string(&service_specs)
         .context(format!("Failed to serialize {spec_filename}"))?;
+
     fs::write(spec_path.as_str(), service_specs.as_bytes())
         .context(format!("Failed to write {spec_filename}"))?;
 
@@ -182,15 +188,14 @@ fn add_service_specs(
 }
 
 macro_rules! check_condition {
-    ($question:expr, $answers:expr) => {
-        let condition = $question.clone().condition.unwrap();
-        let ans = $answers.iter().find(|a| a.name == condition.question);
+    ($condition:expr, $answers:expr) => {
+        let ans = $answers.iter().find(|a| a.name == $condition.question);
         if ans.is_none() {
             continue;
         }
 
         let ans = ans.unwrap();
-        if !condition.values.contains(&ans.value) {
+        if !$condition.values.contains(&ans.value) {
             continue;
         }
     };
@@ -199,18 +204,18 @@ macro_rules! check_condition {
 fn custom_questions(spec_questions_path: Option<&String>) -> Result<Vec<Answer>> {
     let mut answers: Vec<Answer> = Vec::new();
 
-    if spec_questions_path.is_some() && Path::new(spec_questions_path.unwrap().as_str()).exists() {
-        let questions = fs::read_to_string(spec_questions_path.unwrap())
+    if let Some(spec_questions_path) = spec_questions_path {
+        let questions = fs::read_to_string(spec_questions_path)
             .context(format!("Failed to read {spec_questions_path:?}"))?;
         let questions: Root = serde_yaml::from_str(questions.as_str())
             .context(format!("Failed to parse {spec_questions_path:?}"))?;
 
         for question in &questions.questions {
-            if question.condition.is_some() {
-                check_condition!(question, answers);
+            if let Some(condition) = &question.condition {
+                check_condition!(condition, answers);
             }
-            if question.options.is_some() && question.options.clone().unwrap().len() > 0 {
-                answers.push(get_answer(question)?);
+            if let Some(options) = &question.options {
+                answers.push(get_answer(&question.name, &question.question, options)?);
             } else {
                 let ans = text(&question.question)?;
                 answers.push(Answer {
@@ -220,23 +225,25 @@ fn custom_questions(spec_questions_path: Option<&String>) -> Result<Vec<Answer>>
             }
         }
     }
+
     Ok(answers)
 }
 
-fn get_answer(question: &Question) -> Result<Answer> {
-    let options = question.options.clone().unwrap();
+fn get_answer(name: &String, question: &String, options: &Vec<OptionElement>) -> Result<Answer> {
     let options: Vec<Choice<String>> = options.iter()
         .map(|o| Choice { prompt: o.display.clone(), choice: o.value.clone() })
         .collect();
-    let ans = select(question.question.as_str(), options)?;
+
+    let ans = select(question, options)?;
     let answer = Answer {
-        name: question.clone().name,
+        name: name.clone(),
         value: ans.choice,
     };
+
     Ok(answer)
 }
 
-fn split_repo_name(service_name: &String, user: &User) -> (String, String) {
+fn split_repo_name(service_name: &String, user: &User) -> Result<(String, String)> {
     let repo_owner;
     let repo_name;
 
@@ -249,5 +256,5 @@ fn split_repo_name(service_name: &String, user: &User) -> (String, String) {
         repo_name = service_name.clone();
     }
 
-    (repo_owner, repo_name)
+    Ok((repo_owner, repo_name))
 }

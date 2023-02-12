@@ -1,22 +1,6 @@
-//!
-//! This example showcases the Github OAuth2 process for requesting access to the user's public repos and
-//! email address.
-//!
-//! Before running it, you'll need to generate your own Github OAuth2 credentials.
-//!
-//! In order to run the example call:
-//!
-//! ```sh
-//! GITHUB_CLIENT_ID=xxx GITHUB_CLIENT_SECRET=yyy cargo run --example github
-//! ```
-//!
-//! ...and follow the instructions.
-//!
-
 use anyhow::{Context, Result};
 use oauth2::{AuthorizationCode, AuthUrl, ClientId, ClientSecret, CsrfToken, RedirectUrl, Scope, TokenUrl};
 use oauth2::basic::{BasicClient, BasicTokenResponse};
-// Alternatively, this can be `oauth2::curl::http_client` or a custom client.
 use oauth2::reqwest::async_http_client;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
