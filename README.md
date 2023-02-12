@@ -1,5 +1,7 @@
 # The developer toolkit
 
+[![Rust Report Card](https://rust-reportcard.xuri.me/badge/github.com/derveloper/tdtk)](https://rust-reportcard.xuri.me/report/github.com/derveloper/tdtk)
+
 This is a collection of tools I use daily, all in a handy interactive cli tool.
 
 ## How to use
