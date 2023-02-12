@@ -6,6 +6,8 @@ This is a collection of tools I use daily, all in a handy interactive cli tool.
 
 ## How to use
 
+[![asciicast](https://asciinema.org/a/b597tDOhuerjHU26ra7LCb56A.svg)](https://asciinema.org/a/b597tDOhuerjHU26ra7LCb56A)
+
 ### Install
 
 To install, download the latest release from the [releases page](https://github.com/derveloper/tdtk/releases) and
