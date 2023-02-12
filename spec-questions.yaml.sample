@@ -27,4 +27,4 @@ questions:
         - twenty-four-seven
     options:
       - display: DevOps
-        value: "dev-ops"
+        value: dev-ops
