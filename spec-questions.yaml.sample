@@ -9,23 +9,22 @@ questions:
     default: 0
     options:
       - display: No on-call
-        value: 0
+        value: none
       - display: Business Hours (06:00-20:00), excluding weekends and public holidays
-        value: 1
+        value: business-hours
       - display: Business Hours (06:00-20:00), including weekends and public holidays
-        value: 2
+        value: business-hours-holidays
       - display: Mission Critical, on-call 24/7
-        value: 3
+        value: twenty-four-seven
   - name: on-call-group
     question: What is the on-call group?
-    type: string
     required: true
     condition:
       question: on-call
       values:
-        - 1
-        - 2
-        - 3
+        - business-hours
+        - business-hours-holidays
+        - twenty-four-seven
     options:
       - display: DevOps
         value: "dev-ops"

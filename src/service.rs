@@ -11,7 +11,7 @@ use octocrab::models::User;
 use octocrab::Octocrab;
 use serde::{Deserialize, Serialize};
 
-use crate::core::{Choice, execute_command, select, text};
+use crate::core::{Choice, execute_command, select, text, validate_yaml_against_schema};
 use crate::github::get_github_token;
 
 #[derive(Debug, Display, PartialEq, Eq, Clone, Deserialize, Serialize)]
@@ -207,6 +207,9 @@ fn custom_questions(spec_questions_path: Option<&String>) -> Result<Vec<Answer>>
     if let Some(spec_questions_path) = spec_questions_path {
         let questions = fs::read_to_string(spec_questions_path)
             .context(format!("Failed to read {spec_questions_path:?}"))?;
+
+        validate_yaml_against_schema(questions.as_str())?;
+
         let questions: Root = serde_yaml::from_str(questions.as_str())
             .context(format!("Failed to parse {spec_questions_path:?}"))?;
 
