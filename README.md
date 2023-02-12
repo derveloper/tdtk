@@ -6,7 +6,7 @@ This is a collection of tools I use daily, all in a handy interactive cli tool.
 
 ## How to use
 
-[![asciicast](https://asciinema.org/a/db7nbqFSzKTCT6KplSYa0EN4P.svg)](https://asciinema.org/a/db7nbqFSzKTCT6KplSYa0EN4P)
+[![asciicast](https://asciinema.org/a/jmMCHUTABMeiekEjLDmEPchSj.svg)](https://asciinema.org/a/jmMCHUTABMeiekEjLDmEPchSj)
 
 ### Install
 
