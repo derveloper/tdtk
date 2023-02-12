@@ -3,8 +3,7 @@ use std::process::Command;
 
 use anyhow::{anyhow, Context, Result};
 use derive_more::Display;
-use inquire::error::InquireResult;
-use inquire::Select;
+use inquire::{Select, Text};
 
 #[derive(Display)]
 #[display(fmt = "{}", prompt)]
@@ -25,8 +24,14 @@ pub enum Chores {
     Service,
 }
 
-pub fn select<T>(prompt: &str, choices: Vec<Choice<T>>) -> InquireResult<Choice<T>> where T: fmt::Display {
-    Select::new(prompt, choices).prompt()
+pub fn select<T>(prompt: &str, choices: Vec<T>) -> Result<T> where T: fmt::Display {
+    Select::new(prompt, choices).prompt().with_context(|| format!("Failed to select `{}`", prompt))
+}
+
+pub fn text<T>(prompt: T) -> Result<String> where T: Into<String> {
+    Text::new(prompt.into().as_str())
+        .prompt()
+        .with_context(|| "Failed to get input")
 }
 
 pub fn execute_command(command: &str, args: &[&str], wd: Option<&String>) -> Result<String> {

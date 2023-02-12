@@ -5,14 +5,13 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 use derive_more::Display;
-use inquire::{Select, Text};
 use oauth2::basic::BasicTokenResponse;
 use oauth2::TokenResponse;
 use octocrab::models::User;
 use octocrab::Octocrab;
 use serde::{Deserialize, Serialize};
 
-use crate::core::{Choice, execute_command, select};
+use crate::core::{Choice, execute_command, select, text};
 use crate::github::get_github_token;
 
 #[derive(Debug, Display, PartialEq, Eq, Clone, Deserialize, Serialize)]
@@ -54,9 +53,7 @@ struct Answer {
 }
 
 pub async fn handle_service(repo_template: &String, spec_questions_path: Option<&String>) -> Result<()> {
-    let service_name = Text::new("What is the name of the service?")
-        .prompt()
-        .with_context(|| "Failed to get service name")?;
+    let service_name = text("What is the name of the service?")?;
 
     let service_name = service_name.trim().to_string();
     let service_name = service_name.replace(" ", "-");
@@ -66,12 +63,10 @@ pub async fn handle_service(repo_template: &String, spec_questions_path: Option<
     }
 
     if Path::new(service_name.as_str()).exists() {
-        let ans = Select::new(
+        let ans = select(
             "Directory exists, do you want to delete it?",
             vec!["No", "Yes"],
-        )
-            .prompt()
-            .with_context(|| "Failed to get input")?;
+        )?;
         if ans == "No" {
             print!("Nothing to do, exiting");
             return Ok(());
@@ -80,9 +75,7 @@ pub async fn handle_service(repo_template: &String, spec_questions_path: Option<
         fs::remove_dir_all(&service_name).with_context(|| "Failed to remove service directory")?;
     }
 
-    let service_description = Text::new("What is the description of the service?")
-        .prompt()
-        .with_context(|| "Failed to get service description")?;
+    let service_description = text("What is the description of the service?")?;
 
     let answers = custom_questions(spec_questions_path)?;
 
@@ -99,9 +92,7 @@ pub async fn handle_service(repo_template: &String, spec_questions_path: Option<
         .await;
 
     if repo.is_ok() {
-        let ans = Select::new("Repo exists, do you want to delete it?", vec!["No", "Yes"])
-            .prompt()
-            .with_context(|| "Failed to get input")?;
+        let ans = select("Repo exists, do you want to delete it?", vec!["No", "Yes"])?;
         if ans == "No" {
             print!("Nothing to do, exiting");
             return Ok(());
@@ -137,7 +128,7 @@ async fn create_repo(
     repo_owner: &String,
     repo_name: &String,
     template_owner: String,
-    template_name: String
+    template_name: String,
 ) -> Result<()> {
     octocrab
         .repos(template_owner, template_name)
@@ -153,7 +144,7 @@ async fn create_repo(
 async fn delete_repo(
     octocrab: &Octocrab,
     repo_owner: &String,
-    repo_name: &String
+    repo_name: &String,
 ) -> Result<()> {
     octocrab
         .repos(repo_owner.as_str(), repo_name.as_str())
@@ -164,7 +155,7 @@ async fn delete_repo(
 
 fn add_service_specs(
     answers: Vec<Answer>,
-    repo_name: String
+    repo_name: String,
 ) -> Result<()> {
     let spec_filename = ".service-specs.yaml";
     let spec_path = format!("{}/{}", repo_name, spec_filename);
@@ -205,21 +196,6 @@ macro_rules! check_condition {
     };
 }
 
-macro_rules! collect_answer {
-    ($question:expr, $answers:expr) => {
-        let options = $question.options.clone().unwrap();
-        let options: Vec<Choice<String>> = options.iter()
-            .map(|o| Choice { prompt: o.display.clone(), choice: o.value.clone() })
-            .collect();
-        let ans = select($question.question.as_str(), options)
-            .with_context(|| "Failed to get input")?;
-        $answers.push(Answer {
-            name: $question.clone().name,
-            value: ans.choice,
-        });
-    };
-}
-
 fn custom_questions(spec_questions_path: Option<&String>) -> Result<Vec<Answer>> {
     let mut answers: Vec<Answer> = Vec::new();
 
@@ -234,11 +210,9 @@ fn custom_questions(spec_questions_path: Option<&String>) -> Result<Vec<Answer>>
                 check_condition!(question, answers);
             }
             if question.options.is_some() && question.options.clone().unwrap().len() > 0 {
-                collect_answer!(question, answers);
+                answers.push(get_answer(question)?);
             } else {
-                let ans = Text::new(question.question.as_str())
-                    .prompt()
-                    .with_context(|| "Failed to get input")?;
+                let ans = text(&question.question)?;
                 answers.push(Answer {
                     name: question.clone().name,
                     value: ans,
@@ -247,6 +221,19 @@ fn custom_questions(spec_questions_path: Option<&String>) -> Result<Vec<Answer>>
         }
     }
     Ok(answers)
+}
+
+fn get_answer(question: &Question) -> Result<Answer> {
+    let options = question.options.clone().unwrap();
+    let options: Vec<Choice<String>> = options.iter()
+        .map(|o| Choice { prompt: o.display.clone(), choice: o.value.clone() })
+        .collect();
+    let ans = select(question.question.as_str(), options)?;
+    let answer = Answer {
+        name: question.clone().name,
+        value: ans.choice,
+    };
+    Ok(answer)
 }
 
 fn split_repo_name(service_name: &String, user: &User) -> (String, String) {

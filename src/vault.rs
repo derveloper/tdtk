@@ -13,7 +13,7 @@ use rand_chacha::rand_core::{RngCore, SeedableRng};
 use regex::Regex;
 
 use crate::completer::FilePathCompleter;
-use crate::core::{Choice, execute_command, select};
+use crate::core::{Choice, execute_command, select, text};
 use crate::core::Action::{Generate, Import};
 
 pub fn handle_vault_secret() -> Result<()> {
@@ -51,7 +51,7 @@ pub fn handle_vault_secret() -> Result<()> {
 }
 
 fn prompt_secret_name() -> Result<String> {
-    let name = Text::new("What is the name of the secret?").prompt();
+    let name = text("What is the name of the secret?");
 
     name.map(|name| {
         let re = Regex::new(r"[^A-Za-z0-9]").unwrap();
