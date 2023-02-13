@@ -52,25 +52,30 @@ struct Answer {
     value: String,
 }
 
-pub async fn handle_service(repo_template: &String, spec_questions_path: Option<&String>) -> Result<()> {
-    let service_name = text("What is the name of the service?")?;
+macro_rules! select_or_return {
+    ($prompt:expr, $choices:expr, $return_if:expr) => {
+        {
+            let answer = select($prompt, $choices)?;
+            if answer == $return_if {
+                print!("Nothing to do, exiting");
+                return Ok(());
+            }
+        }
+    };
+}
 
-    let service_name = service_name.trim().to_string();
-    let service_name = service_name.replace(" ", "-");
-    if service_name.trim().is_empty() {
+pub async fn handle_service(repo_template: &String, spec_questions_path: Option<&String>) -> Result<()> {
+    let service_name = text("What is the name of the service?")?
+        .trim()
+        .replace(" ", "-");
+
+    if service_name.is_empty() {
         println!("Service name cannot be empty");
         return Ok(());
     }
 
     if Path::new(service_name.as_str()).exists() {
-        let ans = select(
-            "Directory exists, do you want to delete it?",
-            vec!["No", "Yes"],
-        )?;
-        if ans == "No" {
-            print!("Nothing to do, exiting");
-            return Ok(());
-        }
+        select_or_return!("Directory exists, do you want to delete it?", vec!["No", "Yes"], "No");
 
         fs::remove_dir_all(&service_name).context("Failed to remove service directory")?;
     }
@@ -92,11 +97,7 @@ pub async fn handle_service(repo_template: &String, spec_questions_path: Option<
         .await;
 
     if repo.is_ok() {
-        let ans = select("Repo exists, do you want to delete it?", vec!["No", "Yes"])?;
-        if ans == "No" {
-            print!("Nothing to do, exiting");
-            return Ok(());
-        }
+        select_or_return!("Repo exists, do you want to delete it?", vec!["No", "Yes"], "No");
 
         delete_repo(&octocrab, &repo_owner, &repo_name).await?;
     }
@@ -146,8 +147,7 @@ async fn delete_repo(
     repo_owner: &String,
     repo_name: &String,
 ) -> Result<()> {
-    octocrab
-        .repos(repo_owner.as_str(), repo_name.as_str())
+    octocrab.repos(repo_owner.as_str(), repo_name.as_str())
         .delete()
         .await
         .context("Failed to delete repo")
@@ -160,24 +160,13 @@ fn add_service_specs(
     let spec_filename = ".service-specs.yaml";
     let spec_path = format!("{}/{}", repo_name, spec_filename);
 
-    File::create(&spec_path)
-        .context(format!("Failed to create {spec_filename}"))?;
-
-    let specs_file = fs::read_to_string(spec_path.as_str())
-        .context(format!("Failed to read {spec_filename}"))?;
-
-    let mut service_specs: BTreeMap<String, String> = serde_yaml::from_str(specs_file.as_str())
-        .context(format!("Failed to parse {spec_filename}"))?;
+    let mut service_specs = create_spec_file(&spec_path)?;
 
     for answer in answers {
         service_specs.insert(answer.name, answer.value);
     }
 
-    let service_specs = serde_yaml::to_string(&service_specs)
-        .context(format!("Failed to serialize {spec_filename}"))?;
-
-    fs::write(spec_path.as_str(), service_specs.as_bytes())
-        .context(format!("Failed to write {spec_filename}"))?;
+    write_service_spec(spec_path, &mut service_specs)?;
 
     let repo_name = Some(&repo_name);
     execute_command("git", &["add", ".service-specs.yaml"], repo_name)?;
@@ -185,6 +174,27 @@ fn add_service_specs(
     execute_command("git", &["push", "origin", "main"], repo_name)?;
 
     Ok(())
+}
+
+fn create_spec_file(spec_path: &String) -> Result<BTreeMap<String, String>> {
+    File::create(&spec_path)
+        .context(format!("Failed to create {spec_path}"))?;
+
+    let specs_file = fs::read_to_string(spec_path.as_str())
+        .context(format!("Failed to read {spec_path}"))?;
+
+    let service_specs = serde_yaml::from_str(specs_file.as_str())
+        .context(format!("Failed to parse {spec_path}"))?;
+
+    Ok(service_specs)
+}
+
+fn write_service_spec(spec_path: String, service_specs: &mut BTreeMap<String, String>) -> Result<()> {
+    let service_specs = serde_yaml::to_string(&service_specs)
+        .context(format!("Failed to serialize {spec_path}"))?;
+
+    fs::write(spec_path.as_str(), service_specs.as_bytes())
+        .context(format!("Failed to write {spec_path}"))
 }
 
 macro_rules! check_condition {

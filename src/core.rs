@@ -1,11 +1,11 @@
-use std::{fmt};
+use std::fmt;
 use std::process::Command;
 
 use anyhow::{anyhow, Context, Result};
 use derive_more::Display;
 use inquire::{Select, Text};
 use jsonschema::JSONSchema;
-use serde_yaml::{Value};
+use serde_yaml::Value;
 
 #[derive(Display)]
 #[display(fmt = "{}", prompt)]
