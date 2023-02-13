@@ -34,7 +34,7 @@ async fn main() -> anyhow::Result<()> {
 
     let mut template_repo_arg = arg!([template_repo] "The name of the template repo (e.g. 'java-service', 'org/default-service)")
         .short('t')
-        .default_value("tdtk-template-repo");
+        .default_value("derveloper/tdtk-template-repo");
 
     let mut spec_questions_path_arg = arg!([spec_questions_path] "Path to the spec questions file")
         .short('q')

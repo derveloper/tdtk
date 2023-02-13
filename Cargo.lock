@@ -1994,17 +1994,17 @@ dependencies = [
 
 [[package]]
 name = "tdtk"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
- "ansible-vault",
- "anyhow",
- "base64 0.21.0",
- "clap",
- "clap-serde-derive",
- "derive_more",
- "dirs",
- "inquire",
- "jsonschema",
+    "ansible-vault",
+    "anyhow",
+    "base64 0.21.0",
+    "clap",
+    "clap-serde-derive",
+    "derive_more",
+    "dirs",
+    "inquire",
+    "jsonschema",
  "oauth2",
  "octocrab",
  "open",
